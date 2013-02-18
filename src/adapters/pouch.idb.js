@@ -190,11 +190,15 @@ var IdbPouch = function(opts, callback) {
 
     function processDocs() {
       if (!docs.length) {
+          console.log("processDocs returning << end of docs");
         return;
       }
       var currentDoc = docs.shift();
       var req = txn.objectStore(DOC_STORE).get(currentDoc.metadata.id);
       req.onsuccess = function process_docRead(event) {
+          console.log("=============processDocs===================");
+          console.log(event);
+          console.log("=============processDocs===================");
         var oldDoc = event.target.result;
         if (!oldDoc) {
           insertDoc(currentDoc);
@@ -214,7 +218,7 @@ var IdbPouch = function(opts, callback) {
           return;
         }
         var metadata = result.metadata;
-        var rev = winningRev(metadata);
+        var rev = Pouch.merge.winningRev(metadata);
 
         aresults.push({
           ok: true,
@@ -240,6 +244,7 @@ var IdbPouch = function(opts, callback) {
     }
 
     function writeDoc(docInfo, callback) {
+      console.log("Writing New Doc",docInfo);
       var err = null;
       var recv = 0;
 
@@ -251,6 +256,7 @@ var IdbPouch = function(opts, callback) {
 
       if (isDeleted(docInfo.metadata, docInfo.metadata.rev)) {
         docInfo.data._deleted = true;
+        console.log("This version is marked for deletion");
       }
 
       var attachments = docInfo.data._attachments ?
@@ -273,6 +279,7 @@ var IdbPouch = function(opts, callback) {
       }
 
       if (!attachments.length) {
+          console.log("No attachment length");
         finish();
       }
 
@@ -305,15 +312,24 @@ var IdbPouch = function(opts, callback) {
     }
 
     function updateDoc(oldDoc, docInfo) {
-      var merged = Pouch.merge(oldDoc.rev_tree, docInfo.metadata.rev_tree[0], 1000);
+      console.log("Updating doc",docInfo);
+      console.log("oldDocs contains",oldDoc);
 
+      // Transfer the deletions map from oldDoc
+      docInfo.metadata.deletions = extend(docInfo.metadata.deletions,oldDoc.deletions);
+      console.log("doc after extension",docInfo);
+
+      var merged = Pouch.merge(oldDoc.rev_tree, docInfo.metadata.rev_tree[docInfo.metadata.rev_tree.length-1], 1000);
+    console.log("Merged stuff",merged);
       var inConflict = (isDeleted(oldDoc) && isDeleted(docInfo.metadata)) ||
         (!isDeleted(oldDoc) && newEdits && merged.conflicts !== 'new_leaf');
 
       if (inConflict) {
+        console.log("This update is in conflict");
         results.push(makeErr(Pouch.Errors.REV_CONFLICT, docInfo._bulk_seq));
         return processDocs();
       }
+
 
       docInfo.metadata.rev_tree = merged.tree;
       writeDoc(docInfo, processDocs);
@@ -321,6 +337,7 @@ var IdbPouch = function(opts, callback) {
 
     function insertDoc(docInfo) {
       // Cant insert new deleted documents
+      console.log("Inserting new docs",docInfo);
       if ('was_delete' in opts && isDeleted(docInfo.metadata)) {
         results.push(Pouch.Errors.MISSING_DOC);
         return processDocs();
@@ -411,7 +428,7 @@ var IdbPouch = function(opts, callback) {
         return;
       }
 
-      var rev = winningRev(metadata);
+      var rev = Pouch.merge.winningRev(metadata);
       var key = opts.rev ? opts.rev : rev;
       var index = txn.objectStore(BY_SEQ_STORE).index('_rev');
 
@@ -628,12 +645,12 @@ var IdbPouch = function(opts, callback) {
             id: metadata.id,
             key: metadata.id,
             value: {
-              rev: winningRev(metadata)
+              rev: Pouch.merge.winningRev(metadata)
             }
           };
           if (opts.include_docs) {
             doc.doc = data;
-            doc.doc._rev = winningRev(metadata);
+            doc.doc._rev = Pouch.merge.winningRev(metadata);
             if (opts.conflicts) {
               doc.doc._conflicts = collectConflicts(metadata.rev_tree);
             }
@@ -790,7 +807,7 @@ var IdbPouch = function(opts, callback) {
           return cursor['continue']();
         }
 
-        var mainRev = winningRev(metadata);
+        var mainRev = Pouch.merge.winningRev(metadata);
         var index = txn.objectStore(BY_SEQ_STORE).index('_rev');
         index.get(mainRev).onsuccess = function(docevent) {
           var doc = docevent.target.result;

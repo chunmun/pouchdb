@@ -52,7 +52,7 @@ var Pouch = function Pouch(name, opts, callback) {
   }
 };
 
-Pouch.DEBUG = false;
+Pouch.DEBUG = true;
 
 Pouch.adapters = {};
 Pouch.plugins = {};
@@ -144,6 +144,11 @@ Pouch.Errors = {
     status: 500,
     error: 'unknown_error',
     reason: 'Database encountered an unknown error'
+  },
+  INVALID_REQUEST: {
+    status: 400,
+    error: 'invalid_request',
+    reason: 'Request was invalid'
   }
 };
 

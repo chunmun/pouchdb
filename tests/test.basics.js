@@ -361,20 +361,26 @@ adapters.map(function(adapter) {
   asyncTest('deletions persists', 1, function() {
     var doc = {_id: 'staticId', contents: 'stuff'};
     function writeAndDelete(db, cb) {
+        console.log("<<< test.basics.js inserting ");
       db.put(doc, function(err, info) {
+          console.log("<<< test.basic.js insert complete, start deleting");
         db.remove({_id:info.id, _rev:info.rev}, function(doc) {
+            console.log(">>> test.basic.js deletion complete");
           cb();
         });
       });
-    }
+    };
     initTestDB(this.name, function(err, db) {
       writeAndDelete(db, function() {
         writeAndDelete(db, function() {
+            writeAndDelete(db, function(){
           db.put(doc, function() {
             db.get(doc._id, {conflicts: true}, function(err, details) {
+                console.log(details);
               equal(false, '_conflicts' in details, 'Should not have conflicts');
               start();
             });
+          });
           });
         });
       });
