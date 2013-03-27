@@ -199,6 +199,29 @@ adapters.map(function(adapters) {
     });
   });
 
+  asyncTest("Test checkpoint on remote db", function() {
+    console.info('Starting Test: Test checkpoint on remote db');
+    var self = this;
+    var doc = {_id: "3", count: 0};
+    initDBPair(this.name, this.remote, function(db, remote) {
+      remote.put(doc, function(err, res) {
+        db.replicate.from(remote, function(err, res) {
+          db.get(doc._id, function(err, res) {
+            db.remove(res, function(err, res) {
+              ok(res.ok, 'Removal was ok');
+              db.put(doc, function(err, res) {
+                db.replicate.from(remote, function(err, res) {
+                  equal(res.docs_written,1,'correct #docs replicated');
+                  start();
+                })
+              });
+            });
+          })
+        });
+      });
+    });
+  });
+
 
   asyncTest('Testing allDocs with some conflicts (issue #468)', function() {
     // we indeed needed replication to create failing test here!
