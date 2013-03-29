@@ -200,23 +200,27 @@ adapters.map(function(adapters) {
   });
 
   asyncTest("Test checkpoint on remote db", function() {
-    console.info('Starting Test: Test checkpoint on remote db');
+    console.info('Starting Test: Test Checkpoint on remote db');
     var self = this;
     var doc = {_id: "3", count: 0};
     initDBPair(this.name, this.remote, function(db, remote) {
-      remote.put(doc, function(err, res) {
-        db.replicate.from(remote, function(err, res) {
-          db.get(doc._id, function(err, res) {
-            db.remove(res, function(err, res) {
-              ok(res.ok, 'Removal was ok');
-              db.put(doc, function(err, res) {
-                db.replicate.from(remote, function(err, res) {
-                  equal(res.docs_written,1,'correct #docs replicated');
-                  start();
-                })
+      db.put(doc, {}, function(err, res) {
+        db.replicate.to(remote, function(err, res) {
+          remote.get(doc._id, function(err, docRemote) {
+            ok(docRemote._id === '3', 'Doc replication is ok');
+            Pouch.destroy(self.remote, function(err, res) {
+              ok(res.ok, 'Remote db destroyed');
+              initTestDB(self.remote, function(err, remote) {
+                remote.allDocs({include_docs:true}, function(err, res) {
+                  ok(res.total_rows === 0, 'Remote db reinit');
+                  db.replicate.to(remote, function(err, res) {
+                    equal(res.docs_written,1,'correct # of docs written');
+                    start();
+                  });
+                });
               });
             });
-          })
+          });
         });
       });
     });

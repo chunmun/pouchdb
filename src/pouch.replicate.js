@@ -61,17 +61,24 @@ var genReplicationId = function(src, target, opts) {
 };
 
 // A checkpoint lets us restart replications from when they were last cancelled
-var fetchCheckpoint = function(src, id, callback) {
-  src.get(id, function(err, doc) {
+var fetchCheckpoint = function(src, target, id, callback) {
+  src.get(id, function(err, docSrc) {
     if (err && err.status === 404) {
       callback(null, 0);
     } else {
-      callback(null, doc.last_seq);
+      target.get(id, function(err, docTar) {
+        if ((err && err.status === 404) ||
+          docTar.last_seq !== docSrc.last_seq) {
+          callback(null, 0);
+        } else {
+          callback(null, doc.last_seq);
+        }
+      })
     }
   });
 };
 
-var writeCheckpoint = function(src, id, checkpoint, callback) {
+var writeCheckpoint = function(src, target, id, checkpoint, callback) {
   var check = {
     _id: id,
     last_seq: checkpoint
@@ -81,7 +88,9 @@ var writeCheckpoint = function(src, id, checkpoint, callback) {
       check._rev = doc._rev;
     }
     src.put(check, function(err, doc) {
-      callback();
+      target.put(check, function(err, doc) {
+        callback();
+      });
     });
   });
 };
@@ -183,13 +192,13 @@ function replicate(src, target, opts, promise) {
   function isCompleted() {
     if (completed && pending === 0) {
       result.end_time = Date.now();
-      writeCheckpoint(src, repId, last_seq, function(err, res) {
+      writeCheckpoint(src, target, repId, last_seq, function(err, res) {
         call(opts.complete, err, result);
       });
     }
   }
 
-  fetchCheckpoint(src, repId, function(err, checkpoint) {
+  fetchCheckpoint(src, target, repId, function(err, checkpoint) {
 
     if (err) {
       return call(opts.complete, err);
