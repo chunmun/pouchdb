@@ -259,4 +259,60 @@ adapters.map(function(adapter) {
       });
     });
   });
+
+
+  asyncTest('Testing attachments', function() {
+    console.log(adapter);
+    var binAttDoc = {
+      _id: "bin_doc",
+      _attachments:{
+        'foo.txt': {
+          content_type:'text/plain',
+          data: 'VGhpcyBpcyBhIGJhc2U2NCBlbmNvZGVkIHRleHQ='
+        }
+      }
+    };
+
+    var jsonDoc = {
+      _id: 'json_doc',
+      _attachments: {
+        'foo.json': {
+          content_type: 'application/json',
+          data: btoa('{"Hello":"world"}')
+        }
+      }
+    };
+
+    initTestDB(this.name, function(err, db) {
+      db.bulkDocs({docs:[binAttDoc, jsonDoc]}, function(err, res) {
+        db.allDocs({include_docs: true, attachments: true}, function(err, res) {
+          // We should get some attachments here
+          console.log('allDocs');
+          console.log(res);
+
+          // db.get(jsonDoc._id, {attachments:true}, function(err, res) {
+          // this version below gets the attachment directly
+          // db.get('json_doc/foo.json', {include_docs:true}, function(err, res) {
+          //   console.log('get');
+          //   console.log(res);
+          //   console.log(atob(res._attachments['foo.json'].data));
+          // });
+
+          // db.getAttachment('json_doc/foo.json', function(err, res) {
+          //   console.log('getAttachment');
+          //   readBlob(res, function(data) {
+          //     console.log('readBlob');
+          //     console.log(data);
+          //   });
+          // });
+
+
+          // db.getAttachment('json_doc/foo.json', function(err, res) {
+          //   console.log(res);
+          //   start();
+          // });
+        });
+      });
+    });
+  });
 });

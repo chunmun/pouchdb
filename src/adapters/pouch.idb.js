@@ -283,7 +283,7 @@ var IdbPouch = function(opts, callback) {
           });
         }
       });
-      
+
       function done() {
         docv++;
         if (docInfos.length === docv) {
@@ -560,7 +560,7 @@ var IdbPouch = function(opts, callback) {
       : start ? IDBKeyRange.lowerBound(start)
       : end ? IDBKeyRange.upperBound(end) : null;
 
-    var transaction = idb.transaction([DOC_STORE, BY_SEQ_STORE], 'readonly');
+    var transaction = idb.transaction([DOC_STORE, BY_SEQ_STORE, ATTACH_STORE], 'readonly');
     transaction.oncomplete = function() {
       if ('keys' in opts) {
         opts.keys.forEach(function(key) {
@@ -610,6 +610,20 @@ var IdbPouch = function(opts, callback) {
           doc.doc._rev = Pouch.merge.winningRev(metadata);
           if (opts.conflicts) {
             doc.doc._conflicts = collectConflicts(metadata);
+          }
+        }
+        if (opts.attachments && data && data._attachments) {
+          var attachments = Object.keys(data._attachments);
+
+          attachments.forEach(function(key) {
+            console.log(data._id);
+            api.getAttachment(data._id + '/' + key, {encode: true, txn: transaction}, function(err, dataAttach) {
+                doc.doc._attachments[key].data = dataAttach;
+            });
+          });
+        } else if (data && data._attachments){
+          for (var key in data._attachments) {
+            doc.doc._attachments[key].stub = true;
           }
         }
         if ('keys' in opts) {
@@ -673,7 +687,7 @@ var IdbPouch = function(opts, callback) {
       console.log(name + ': Start Changes Feed: continuous=' + opts.continuous);
 
     opts = extend(true, {}, opts);
-    
+
     if (!opts.since) opts.since = 0;
 
     if (opts.continuous) {
@@ -803,7 +817,7 @@ var IdbPouch = function(opts, callback) {
       // TODO: shouldn't we pass some params here?
       call(opts.complete);
     };
-  
+
   };
 
   api._close = function(callback) {
