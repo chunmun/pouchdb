@@ -5,7 +5,7 @@
 
 "use strict";
 
-var adapters = ['http-1', 'local-1'];
+var adapters = ['http-1', 'local-1', 'local-3'];
 var qunit = module;
 var LevelPouch;
 
@@ -259,6 +259,49 @@ adapters.map(function(adapter) {
     });
   });
 
+  asyncTest('Testing attachments', function() {
+    console.log('using adapter '+adapter);
+    var binAttDoc = {
+      _id: "bin_doc",
+      _attachments:{
+        'footxt': {
+          content_type:'text/plain',
+          data: 'VGhpcyBpcyBhIGJhc2U2NCBlbmNvZGVkIHRleHQ='
+        }
+      }
+    };
+
+    var jsonDoc = {
+      _id: 'json_doc',
+      _attachments: {
+        'foojson': {
+          content_type: 'application/json',
+          data: btoa('{"Hello":"world"}')
+        }
+      }
+    };
+
+    initTestDB(this.name, function(err, db) {
+      db.bulkDocs({docs:[binAttDoc, jsonDoc]}, function(err, res) {
+        db.allDocs({include_docs: true, attachments: true}, function(err, res) {
+          // We should get some attachments here
+          equal(res.rows[0].doc._attachments.footxt.data, binAttDoc._attachments['footxt'].data);
+          equal(res.rows[1].doc._attachments.foojson.data, jsonDoc._attachments['foojson'].data);
+
+          db.allDocs({include_docs:true}, function(err, res) {
+            // Should only see the stubs now
+            equal(res.rows[0].doc._attachments.footxt.data, undefined);
+            equal(res.rows[0].doc._attachments.footxt.stub, true);
+
+            equal(res.rows[1].doc._attachments.foojson.data, undefined);
+            equal(res.rows[1].doc._attachments.foojson.stub, true);
+            start();
+          });
+        });
+      });
+    });
+  });
+
   asyncTest('test limit option and total_rows', function() {
     initTestDB(this.name, function(err, db) {
       var docs = {
@@ -269,7 +312,6 @@ adapters.map(function(adapter) {
       };
       db.bulkDocs(docs, function(err, res) {
         db.allDocs({ startkey: 'a', limit: 1 }, function (err, res) {
-          console.log(res);
           equal(res.total_rows, 2, 'Accurately return total_rows count');
           equal(res.rows.length, 1, 'Correctly limit the returned rows.');
           start();
@@ -277,5 +319,4 @@ adapters.map(function(adapter) {
       });
     });
   });
-
 });

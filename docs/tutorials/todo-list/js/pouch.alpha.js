@@ -413,7 +413,7 @@ var Pouch = function Pouch(name, opts, callback) {
     callback = opts;
     opts = {};
   }
-  
+
   if (typeof name === 'object') {
     opts = name;
     name = undefined;
@@ -1258,7 +1258,7 @@ var winningRev = function(metadata) {
 
 var rootToLeaf = function(tree) {
   var paths = [];
-  
+
   traverseRevTree(tree, function(isLeaf, pos, id, history) {
     history = history ? history.slice(0) : [];
     history.push(id);
@@ -2076,13 +2076,13 @@ var HttpPouch = function(opts, callback) {
         if (err) fetchRetryCount += 1;
         else fetchRetryCount = 0;
         var timeoutMultiplier = 1 << fetchRetryCount;       // i.e. Math.pow(2, fetchRetryCount)
-        
+
         var retryWait = fetchTimeout * timeoutMultiplier;
         var maximumWait = opts.maximumWait || 30000;
         if (retryWait > maximumWait) {
           call(opts.complete, err || Pouch.Errors.UNKNOWN_ERROR, null);
         }
-        
+
         // Queue a call to fetch again with the newest sequence number
         setTimeout(function () {
           fetch(last_seq, fetched);

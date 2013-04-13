@@ -621,6 +621,19 @@ var IdbPouch = function(opts, callback) {
               .map(function(x) { return x.id; });
           }
         }
+        if (opts.attachments && data && data._attachments) {
+          var attachments = Object.keys(data._attachments);
+
+          attachments.forEach(function(key) {
+            api.getAttachment(data._id + '/' + key, {encode: true, txn: transaction}, function(err, dataAttach) {
+                doc.doc._attachments[key].data = dataAttach;
+            });
+          });
+        } else if (data && data._attachments){
+          for (var key in data._attachments) {
+            doc.doc._attachments[key].stub = true;
+          }
+        }
         if ('keys' in opts) {
           if (opts.keys.indexOf(metadata.id) > -1) {
             if (isDeleted(metadata)) {
@@ -855,7 +868,7 @@ var IdbPouch = function(opts, callback) {
   };
 
   // This function removes revisions of document docId
-  // which are listed in revs and sets this document 
+  // which are listed in revs and sets this document
   // revision to to rev_tree
   api._doCompaction = function(docId, rev_tree, revs, callback) {
     var txn = idb.transaction([DOC_STORE, BY_SEQ_STORE], IDBTransaction.READ_WRITE);

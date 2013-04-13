@@ -539,7 +539,22 @@ var LevelPouch = function(opts, callback) {
           if (opts.conflicts) {
             doc.doc._conflicts = Pouch.merge.collectConflicts(metadata);
           }
+          if (data._attachments) {
+            if (opts.attachments) {
+              var attachments = Object.keys(doc._attachments);
+              attachments.forEach(function (key) {
+                api.getAttachment(doc.doc.id + '/' + key, {encode: true} , function (err, att) {
+                   doc._attachments[key].data = att;
+                });
+              });
+            } else {
+              for (var key in data._attachments) {
+                doc.doc._attachments[key].stub = true;
+              }
+            }
+          }
         }
+
         if ('keys' in opts) {
           if (opts.keys.indexOf(metadata.id) > -1) {
             if (isDeleted(metadata)) {
